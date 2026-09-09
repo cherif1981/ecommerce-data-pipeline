@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: ecommerce
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Run tests with pytest
+      env:
+        DB_HOST: localhost
+        DB_NAME: ecommerce
+        DB_USER: admin
+        DB_PASSWORD: secret
+      run: |
+        pytest tests/ -v
+    
+    - name: Run ETL Pipeline (Smoke Test)
+      run: |
+        python main.py

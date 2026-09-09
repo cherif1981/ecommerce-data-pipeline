@@ -6,3 +6,4 @@ requests==2.31.0  # لو هتسخدم API
 pytest==7.4.2
 great-expectations==0.18.2  # (اختياري) لجودة البيانات بشكل احترافي
 streamlit==1.27.0  # للـ Dashboard
+pytest-cov

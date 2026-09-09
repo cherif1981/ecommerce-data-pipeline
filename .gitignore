@@ -1,49 +1,39 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*.so
 .Python
-env/
+.env
 venv/
-.venv/
+env/
+.venv
 pip-log.txt
 pip-delete-this-directory.txt
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
 .mypy_cache/
-.dmypy.json
-dmypy.json
+.ruff_cache/
 
-# Base de données
+# Data
+data/raw/
+!data/samples/
 *.db
 *.sqlite
-*.sqlite3
 
-# Fichiers de données
-data/raw/*.csv
-data/processed/*.csv
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+# Logs
+logs/
+*.log
 
-# Environnement
-.env
-.env.local
-.env.*.local
+# Docker
+.docker/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# Logs
-*.log
-logs/
 
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db

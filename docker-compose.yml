@@ -1,28 +1,38 @@
 version: '3.8'
+
 services:
   postgres:
-    image: postgres:15
-    container_name: ecommerce_db
+    image: postgres:15-alpine
+    container_name: ecommerce_postgres
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: ecommerce
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
+      POSTGRES_USER: ${POSTGRES_USER:-etl_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d/  # لتنفيذ SQL تلقائياً عند البدء
-  
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-etl_user} -d ${POSTGRES_DB:-ecommerce}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etl:
+    build: .
+    container_name: ecommerce_etl
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
+      POSTGRES_USER: ${POSTGRES_USER:-etl_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
+    volumes:
+      - ./data:/app/data
+    command: python -m src.ecommerce_pipeline.pipeline /app/data/samples/orders.csv
 
 volumes:
   postgres_data:

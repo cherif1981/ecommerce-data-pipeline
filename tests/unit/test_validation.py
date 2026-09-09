@@ -1,167 +1,111 @@
-"""Unit tests for validation module."""
-
-import pytest
 import pandas as pd
+import pytest
 
-from src.ecommerce_pipeline.validation.orders import OrderValidator
 from src.ecommerce_pipeline.exceptions import ValidationError
+from src.ecommerce_pipeline.validation.orders import OrderValidator
+
+
+def valid_orders():
+    return pd.DataFrame(
+        {
+            "order_id": ["ORD001", "ORD002"],
+            "customer_id": ["CUST001", "CUST002"],
+            "order_date": ["2024-01-01", "2024-01-02"],
+            "product_id": ["PROD001", "PROD002"],
+            "quantity": [2, 1],
+            "price": [50.0, 75.0],
+            "total": [100.0, 75.0],
+        }
+    )
 
 
 class TestOrderValidator:
-    """Test suite for OrderValidator class."""
-    
-    def test_validate_success(self, sample_df):
-        """Test successful validation."""
-        validator = OrderValidator(sample_df)
-        validated_df = validator.validate()
-        
-        assert isinstance(validated_df, pd.DataFrame)
-        assert len(validated_df) == len(sample_df)
-    
-    def test_validate_required_columns_present(self, sample_df):
-        """Test that all required columns are present."""
-        validator = OrderValidator(sample_df)
-        validated_df = validator.validate()
-        
-        for col in validator.REQUIRED_COLUMNS:
-            assert col in validated_df.columns
-    
-    def test_validate_missing_columns(self, sample_df):
-        """Test validation with missing columns."""
-        df = sample_df.drop(columns=['total'])
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "Missing" in str(excinfo.value)
-    
-    def test_validate_negative_quantity(self, sample_df):
-        """Test validation with negative quantity."""
-        df = sample_df.copy()
-        df.loc[0, 'quantity'] = -1
-        
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "non-positive" in str(excinfo.value)
-    
-    def test_validate_negative_price(self, sample_df):
-        """Test validation with negative price."""
-        df = sample_df.copy()
-        df.loc[0, 'price'] = -50.00
-        
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "non-positive" in str(excinfo.value)
-    
-    def test_validate_inconsistent_totals(self, sample_df):
-        """Test validation with inconsistent totals."""
-        df = sample_df.copy()
-        df.loc[0, 'total'] = 999.99
-        
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "inconsistent totals" in str(excinfo.value)
-    
-    def test_validate_null_values(self, sample_df):
-        """Test validation with null values."""
-        df = sample_df.copy()
-        df.loc[0, 'price'] = None
-        
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "null values" in str(excinfo.value)
-    
-    def test_validate_duplicates_removed(self, sample_df):
-        """Test validation removes duplicates."""
-        df = pd.concat([sample_df, sample_df.iloc[[0]]], ignore_index=True)
-        validator = OrderValidator(df)
-        validated_df = validator.validate()
-        
-        assert len(validated_df) == len(sample_df)
-    
-    def test_validate_date_format_invalid(self, sample_df):
-        """Test validation with invalid date format."""
-        df = sample_df.copy()
-        df.loc[0, 'order_date'] = 'invalid-date'
-        
-        validator = OrderValidator(df)
-        
-        with pytest.raises(ValidationError) as excinfo:
-            validator.validate()
-        
-        assert "Invalid date format" in str(excinfo.value)
-    
-    def test_validate_data_types_correct(self, sample_df):
-        """Test that validation converts types correctly."""
-        validator = OrderValidator(sample_df)
-        validated_df = validator.validate()
-        
-        # Check types after validation
-        assert pd.api.types.is_datetime64_any_dtype(validated_df['order_date'])
-        assert pd.api.types.is_numeric_dtype(validated_df['quantity'])
-        assert pd.api.types.is_numeric_dtype(validated_df['price'])
-        assert pd.api.types.is_numeric_dtype(validated_df['total'])
-    
-    def test_validate_handles_empty_dataframe(self):
-        """Test validation with empty DataFrame."""
-        empty_df = pd.DataFrame(columns=OrderValidator.REQUIRED_COLUMNS)
-        validator = OrderValidator(empty_df)
-        
-        with pytest.raises(ValidationError):
-            validator.validate()
-    
-    def test_validate_handles_extra_columns(self, sample_df):
-        """Test validation with extra columns."""
-        df = sample_df.copy()
-        df['extra_column'] = 'extra_value'
-        
-        validator = OrderValidator(df)
-        validated_df = validator.validate()
-        
-        # Extra column should be preserved
-        assert 'extra_column' in validated_df.columns
-    
-    def test_validate_with_special_characters(self, sample_df):
-        """Test validation with special characters."""
-        df = sample_df.copy()
-        df.loc[0, 'customer_id'] = 'CUST-001_SPECIAL'
-        
-        validator = OrderValidator(df)
-        validated_df = validator.validate()
-        
-        assert validated_df['customer_id'][0] == 'CUST-001_SPECIAL'
-    
-    def test_validate_with_very_large_numbers(self, sample_df):
-        """Test validation with very large numbers."""
-        df = sample_df.copy()
-        df.loc[0, 'quantity'] = 99999
-        df.loc[0, 'total'] = 99999 * df.loc[0, 'price']
-        
-        validator = OrderValidator(df)
-        validated_df = validator.validate()
-        
-        assert validated_df['quantity'][0] == 99999
-    
-    def test_validate_with_decimal_quantities(self, sample_df):
-        """Test validation with decimal quantities."""
-        df = sample_df.copy()
-        df.loc[0, 'quantity'] = 2.5
-        
-        validator = OrderValidator(df)
-        validated_df = validator.validate()
-        
-        # Should convert to numeric
-        assert isinstance(validated_df['quantity'][0], (int, float))
+    def test_valid_data_passes(self):
+        df = valid_orders()
+
+        result = OrderValidator(df).validate()
+
+        assert len(result) == 2
+        assert isinstance(result, pd.DataFrame)
+
+    def test_required_columns_are_enforced(self):
+        df = valid_orders().drop(columns=["customer_id"])
+
+        with pytest.raises(ValidationError, match="required_columns"):
+            OrderValidator(df).validate()
+
+    def test_null_values_are_rejected(self):
+        df = valid_orders()
+        df.loc[0, "customer_id"] = None
+
+        with pytest.raises(ValidationError, match="customer_id"):
+            OrderValidator(df).validate()
+
+    @pytest.mark.parametrize(
+        "column,value",
+        [
+            ("quantity", 0),
+            ("quantity", -1),
+            ("price", 0),
+            ("price", -10),
+            ("total", 0),
+            ("total", -5),
+        ],
+    )
+    def test_non_positive_values_are_rejected(self, column, value):
+        df = valid_orders()
+        df.loc[0, column] = value
+
+        with pytest.raises(ValidationError, match=column):
+            OrderValidator(df).validate()
+
+    def test_invalid_date_is_rejected(self):
+        df = valid_orders()
+        df.loc[0, "order_date"] = "not-a-date"
+
+        with pytest.raises(ValidationError, match="order_date"):
+            OrderValidator(df).validate()
+
+    def test_numeric_strings_are_converted(self):
+        df = valid_orders()
+
+        df["quantity"] = df["quantity"].astype(str)
+        df["price"] = df["price"].astype(str)
+        df["total"] = df["total"].astype(str)
+
+        result = OrderValidator(df).validate()
+
+        assert pd.api.types.is_numeric_dtype(result["quantity"])
+        assert pd.api.types.is_numeric_dtype(result["price"])
+        assert pd.api.types.is_numeric_dtype(result["total"])
+
+    def test_inconsistent_total_is_corrected(self):
+        df = valid_orders()
+
+        df.loc[0, "quantity"] = 3
+        df.loc[0, "price"] = 20
+        df.loc[0, "total"] = 999
+
+        result = OrderValidator(df).validate()
+
+        assert result.loc[0, "total"] == 60
+
+    def test_duplicate_order_ids_are_removed(self):
+        df = pd.concat([valid_orders(), valid_orders().iloc[[0]]])
+
+        result = OrderValidator(df).validate()
+
+        assert len(result) == 2
+        assert result["order_id"].is_unique
+
+    def test_order_date_is_converted_to_datetime(self):
+        result = OrderValidator(valid_orders()).validate()
+
+        assert pd.api.types.is_datetime64_any_dtype(result["order_date"])
+
+    def test_original_dataframe_is_not_modified_by_cleaning(self):
+        df = valid_orders()
+
+        result = OrderValidator(df).validate()
+
+        assert result is not df

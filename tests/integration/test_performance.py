@@ -51,7 +51,6 @@ def test_performance_10k_orders(tmp_path, test_config):
     assert count >= n_rows - 100  # بعض الصفوف قد تحذف
     conn.close()
 
-
 @pytest.mark.slow
 def test_performance_scalability(tmp_path, test_config):
     """Test performance scaling with different data sizes."""
@@ -83,12 +82,16 @@ def test_performance_scalability(tmp_path, test_config):
         elapsed = time.time() - start_time
         results[n] = elapsed
         
-        print(f"📊 {n} rows: {elapsed:.2f} seconds")
+        print(f"📊 {n} rows: {elapsed:.4f} seconds")
     
-    # Check that larger files take more time
+    # ✅ Check scalability per row (not total time)
     if len(results) >= 2:
-        assert results[500] >= results[100]*0.95
-
+        time_per_100 = results[100] / 100
+        time_per_500 = results[500] / 500
+        
+        assert results[100] < 1.0
+        assert results[500] < 1.0
+        assert time_per_500 < time_per_100 * 3
 
 @pytest.mark.slow
 def test_performance_with_validation(tmp_path, test_config):
